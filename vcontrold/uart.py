@@ -128,7 +128,7 @@ class ViessmannProtocol(asyncio.Protocol):
     def connection_lost(self, exc: Exception):
         logger.debug('port closed')
         if self._running and not self._lock.locked():
-            asyncio.ensure_future(self._reconnect(), loop=self._loop)
+            asyncio.ensure_future(self._reconnect())
 
     async def _create_connection(self):
         if self._url.scheme == 'socket':
@@ -150,14 +150,14 @@ class ViessmannProtocol(asyncio.Protocol):
     async def _reconnect(self, delay: int = 10):
         async with self._lock:
             await self._disconnect()
-            await asyncio.sleep(delay, loop=self._loop)
+            await asyncio.sleep(delay)
             try:
-                async with timeout(5, loop=self._loop):
+                async with timeout(5):
                     self._transport, _ = await self._create_connection()
             except (BrokenPipeError, ConnectionRefusedError,
                     serial.SerialException, asyncio.TimeoutError) as exc:
                 logger.warning(exc)
-                asyncio.ensure_future(self._reconnect(), loop=self._loop)
+                asyncio.ensure_future(self._reconnect())
             else:
                 logger.info('Connected to %s', self._url.geturl())
 
@@ -166,9 +166,9 @@ class ViessmannProtocol(asyncio.Protocol):
             return
 
         self._loop = loop
-        self._lock = asyncio.Lock(loop=loop)
-        self._viessmann_lock = asyncio.Lock(loop=loop)
-        self._read_lock = asyncio.Lock(loop=loop)
+        self._lock = asyncio.Lock()
+        self._viessmann_lock = asyncio.Lock()
+        self._read_lock = asyncio.Lock()
         self._running = True
         await self._reconnect(delay=0)
 
